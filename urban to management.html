@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agentic AI - Parking Manager</title>
+    <title>Park Smart AI</title>
     <meta name="description" content="Intelligent Urban Parking Management Dashboard powered by Agentic AI">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1040,7 +1040,7 @@
         <header class="glass-panel main-header">
             <div class="logo">
                 <div class="pulse-dot"></div>
-                <h1>AI Parking Manager</h1>
+                <h1>Park Smart AI</h1>
             </div>
             <div style="display: flex; align-items: center; gap: 1rem;">
                 <span id="vehicleTagDisplay" class="vehicle-tag" style="display:none;"></span>
@@ -1054,12 +1054,6 @@
             <section class="glass-panel search-section panel-large">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                     <h2 style="margin-bottom: 0;">Available Parking Nearby</h2>
-                    <div class="search-bar-wrap" style="width: 320px; display: flex; gap: 8px;">
-                        <input type="text" id="parkingSearch" placeholder="Search locations..."
-                            style="flex: 1; padding: 10px 12px; border-radius: 4px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: var(--text-primary); font-family: 'Outfit', sans-serif; font-size: 0.95rem; outline: none; transition: border-color 0.2s;">
-                        <button id="btnSearch" class="btn btn-login"
-                            style="margin: 0; padding: 10px 16px; border-radius: 4px; border: none; font-size: 0.9rem; font-weight: 600; cursor: pointer; width: auto;">Search</button>
-                    </div>
                 </div>
                 <div class="parking-list-container" id="parkingList">
                     <div class="scanning-ui">
@@ -1168,6 +1162,13 @@
             // State
             let currentSelectedLot = null;
             let selectedVehicleType = null; // 'two-wheeler' | 'four-wheeler'
+            
+            // Location state
+            let userLat = 0;
+            let userLng = 0;
+            let currentLat = 0; // Origin for parking search and routing
+            let currentLng = 0;
+            let isTrackingUser = true; // Whether to auto-update center based on GPS
 
             // ---- Persistent Session Check ----
             const SESSION_KEY = 'parking_session';
@@ -1217,53 +1218,6 @@
             let isRiding = false;
 
             const btnSearch = document.getElementById('btnSearch');
-
-            async function doSearch() {
-                if (!parkingSearch) return;
-                const val = parkingSearch.value.trim();
-                if (!val) {
-                    searchQuery = '';
-                    renderParkingList();
-                    return;
-                }
-
-                try {
-                    if (btnSearch) btnSearch.innerText = '...';
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}`);
-                    const data = await res.json();
-
-                    if (data && data.length > 0) {
-                        const lat = parseFloat(data[0].lat);
-                        const lng = parseFloat(data[0].lon);
-
-                        searchQuery = '';
-                        parkingSearch.value = data[0].display_name.split(',')[0];
-
-                        performParkingSearch(lat, lng, true);
-                    } else {
-                        searchQuery = val.toLowerCase();
-                        renderParkingList();
-                    }
-                } catch (e) {
-                    console.warn('Geocode error', e);
-                    searchQuery = val.toLowerCase();
-                    renderParkingList();
-                } finally {
-                    if (btnSearch) btnSearch.innerText = 'Search';
-                }
-            }
-
-            if (parkingSearch) {
-                parkingSearch.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        doSearch();
-                    }
-                });
-            }
-
-            if (btnSearch) {
-                btnSearch.addEventListener('click', doSearch);
-            }
 
             // --- Login Logic ---
             const loginView = document.getElementById('loginView');
@@ -1514,33 +1468,89 @@
                     }
 
                     if (L.Routing) {
+                        // Reset route data
+                        rideCoords = [];
+                        rideInstructions = [];
+                        
+                        // Origin for current navigation
+                        const startLat = (userLat !== 0) ? userLat : currentLat;
+                        const startLng = (userLng !== 0) ? userLng : currentLng;
+
+                        if (startLat === 0) return;
+
+                        // Clean up old routing elements completely
+                        if (currentRoute) {
+                           try { map.removeControl(currentRoute); } catch(e) {}
+                        }
+                        if (window.fallbackLine) {
+                           try { map.removeLayer(window.fallbackLine); } catch(e) {}
+                        }
+
+                        // Immediate visual feedback: Draw a dashed straight line
+                        const pts = [
+                            [startLat, startLng],
+                            [currentSelectedLot.lat, currentSelectedLot.lng]
+                        ];
+                        window.fallbackLine = L.polyline(pts, {
+                            color: '#00d2ff',
+                            weight: 4,
+                            opacity: 0.5,
+                            dashArray: '8, 12'
+                        }).addTo(map);
+
+                        // Fit map to show both user and destination
+                        map.fitBounds(L.latLngBounds(pts), { padding: [40, 40] });
+
+                        // Try to get actual road route
                         currentRoute = L.Routing.control({
                             waypoints: [
-                                L.latLng(currentLat, currentLng),
+                                L.latLng(startLat, startLng),
                                 L.latLng(currentSelectedLot.lat, currentSelectedLot.lng)
                             ],
                             createMarker: function () { return null; },
                             lineOptions: {
-                                styles: [{ color: '#00d2ff', opacity: 0.8, weight: 6 }]
+                                styles: [
+                                    { color: '#000', opacity: 0.3, weight: 11 }, // Shadow
+                                    { color: '#00d2ff', opacity: 1, weight: 6 }   // Main Line
+                                ]
                             },
                             show: false,
                             addWaypoints: false,
                             draggableWaypoints: false,
-                            fitSelectedRoutes: true,
-                            showAlternatives: false
+                            fitSelectedRoutes: false, // We fit manually above for better control
+                            showAlternatives: false,
+                            router: L.Routing.osrmv1({
+                                serviceUrl: 'https://router.project-osrm.org/route/v1',
+                                timeout: 7000
+                            })
                         }).addTo(map);
 
-                        // Capture route coordinates when found
                         currentRoute.on('routesfound', function (e) {
+                            // Once a real route is found, we can hide the simple fallback line
+                            if (window.fallbackLine) map.removeLayer(window.fallbackLine);
+                            
                             const route = e.routes[0];
-                            rideCoords = route.coordinates;        // array of LatLng
-                            rideInstructions = route.instructions; // turn-by-turn
+                            rideCoords = route.coordinates;
+                            rideInstructions = route.instructions;
+                            console.log("Road route acquired.");
+                        });
+
+                        currentRoute.on('routingerror', function (err) {
+                            console.warn("Routing service error, keeping straight-line fallback.", err);
+                            // Ensure coords are set for simulation even if service fails
+                            rideCoords = [
+                                L.latLng(startLat, startLng),
+                                L.latLng(currentSelectedLot.lat, currentSelectedLot.lng)
+                            ];
+                            rideInstructions = [{ text: 'Follow the straight path to destination', type: 'Straight', index: 0 }];
                         });
                     }
 
                     if (directionsWrapper) {
                         directionsWrapper.style.display = 'flex';
-                        btnDirections.href = `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${currentSelectedLot.lat},${currentSelectedLot.lng}`;
+                        const urlStartLat = (userLat !== 0) ? userLat : currentLat;
+                        const urlStartLng = (userLng !== 0) ? userLng : currentLng;
+                        btnDirections.href = `https://www.google.com/maps/dir/?api=1&origin=${urlStartLat},${urlStartLng}&destination=${currentSelectedLot.lat},${currentSelectedLot.lng}`;
                     }
 
                     const googleMapIframe = document.getElementById('googleMap');
@@ -1696,8 +1706,11 @@
                     startRideSimulation();
 
                     // 2. Open external Google Maps for live navigation
+                    const navStartLat = (userLat !== 0) ? userLat : currentLat;
+                    const navStartLng = (userLng !== 0) ? userLng : currentLng;
+                    
                     const url = `https://www.google.com/maps/dir/?api=1` +
-                        `&origin=${currentLat},${currentLng}` +
+                        `&origin=${navStartLat},${navStartLng}` +
                         `&destination=${currentSelectedLot.lat},${currentSelectedLot.lng}` +
                         `&travelmode=driving` +
                         `&dir_action=navigate`;
@@ -1710,8 +1723,7 @@
 
 
             // Logic: Parking Availability Search
-            let currentLat = 0;
-            let currentLng = 0;
+            // (Removed redundant currentLat/Lng declarations from here)
 
             function renderParkingList() {
                 // Keep scanning UI if not performed
@@ -1925,11 +1937,24 @@
                     };
 
                     function geoSuccess(position) {
-                        latValue.innerText = position.coords.latitude.toFixed(6);
-                        lngValue.innerText = position.coords.longitude.toFixed(6);
-                        accValue.innerText = `\u00B1 ${Math.round(position.coords.accuracy)} m`;
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        userLat = lat;
+                        userLng = lng;
 
-                        performParkingSearch(position.coords.latitude, position.coords.longitude);
+                        if (latValue) latValue.innerText = lat.toFixed(6);
+                        if (lngValue) lngValue.innerText = lng.toFixed(6);
+                        if (accValue) accValue.innerText = `\u00B1 ${Math.round(position.coords.accuracy)} m`;
+
+                        if (userMarker) {
+                            userMarker.setLatLng([lat, lng]);
+                        }
+
+                        // Only move the search center if we are still tracking the user
+                        if (isTrackingUser) {
+                            performParkingSearch(lat, lng);
+                        }
                     }
 
                     function geoError(error) {
