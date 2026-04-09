@@ -1,0 +1,2005 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic AI - Parking Manager</title>
+    <meta name="description" content="Intelligent Urban Parking Management Dashboard powered by Agentic AI">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <style>
+        /* ---- CSS START ---- */
+        :root {
+            --bg-gradient: linear-gradient(135deg, #090b10 0%, #151a28 100%);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f0f4f8;
+            --text-secondary: #9aa1b3;
+            --accent-color: #00d2ff;
+            --accent-glow: rgba(0, 210, 255, 0.4);
+            --enter-color: #20c997;
+            --exit-color: #fa5252;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            /* Better for long dashboard content */
+            overflow-x: hidden;
+        }
+
+        .dashboard-wrap {
+            width: 100%;
+            max-width: 1400px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        /* Login specific styles */
+        .login-wrap {
+            width: 100%;
+            min-height: 100vh;
+            max-width: 450px;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: auto;
+        }
+
+        .login-panel {
+            width: 100%;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 8px rgba(0, 210, 255, 0.2);
+        }
+
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .password-wrapper input {
+            padding-right: 45px;
+        }
+
+        .btn-toggle-password {
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 5px;
+            transition: color 0.2s ease;
+            outline: none;
+        }
+
+        .btn-toggle-password:hover,
+        .btn-toggle-password:focus {
+            color: var(--accent-color);
+        }
+
+
+        .btn-login {
+            background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+            margin-top: 0.5rem;
+            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);
+        }
+
+        .btn-login:hover {
+            box-shadow: 0 6px 20px rgba(0, 210, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 2rem 0;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .divider span {
+            padding: 0 10px;
+        }
+
+        .btn-google {
+            width: 100%;
+            background: #ffffff;
+            color: #3c4043;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+            padding: 12px;
+        }
+
+        .btn-google:hover {
+            background: #f8f9fa;
+            color: #3c4043;
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .error-message {
+            color: #fa5252;
+            background: rgba(250, 82, 82, 0.1);
+            border: 1px solid rgba(250, 82, 82, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .main-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 2rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .pulse-dot {
+            width: 12px;
+            height: 12px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            box-shadow: 0 0 12px var(--accent-glow);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 var(--accent-glow);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(0, 210, 255, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(0, 210, 255, 0);
+            }
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        .status-indicator {
+            font-size: 0.9rem;
+            color: var(--enter-color);
+            background: rgba(32, 201, 151, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            border: 1px solid rgba(32, 201, 151, 0.2);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-auto-rows: minmax(min-content, max-content);
+            gap: 2rem;
+        }
+
+        .panel-large {
+            grid-row: span 2;
+        }
+
+        /* Parking Search Section */
+        .parking-list-container {
+            width: 100%;
+            height: 400px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .scanning-ui {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: 1.5rem;
+        }
+
+        .scanning-ui p {
+            color: var(--accent-color);
+            font-family: monospace;
+            animation: blink 1.5s infinite;
+        }
+
+        .radar.large {
+            width: 150px;
+            height: 150px;
+        }
+
+        .parking-item {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .parking-item.active-lot {
+            background: rgba(0, 210, 255, 0.1);
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .parking-item:last-child {
+            border-bottom: none;
+        }
+
+        .parking-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .parking-info h3 {
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            margin-bottom: 0.3rem;
+        }
+
+        .parking-info p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .parking-status {
+            text-align: right;
+        }
+
+        .spots-available {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--enter-color);
+        }
+
+        .spots-total {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Stats Section */
+        .stats-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            transition: transform 0.2s;
+        }
+
+        .stat-value.highlight {
+            color: var(--accent-color);
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .controls {
+            margin-top: 2rem;
+        }
+
+        .controls h3 {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #fff;
+        }
+
+        .btn-enter {
+            background: linear-gradient(135deg, #12b886 0%, #0ca678 100%);
+            box-shadow: 0 4px 15px rgba(18, 184, 134, 0.3);
+        }
+
+        .btn-enter:hover {
+            box-shadow: 0 6px 20px rgba(18, 184, 134, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-exit {
+            background: linear-gradient(135deg, #fa5252 0%, #e03131 100%);
+            box-shadow: 0 4px 15px rgba(250, 82, 82, 0.3);
+        }
+
+        .btn-exit:hover {
+            box-shadow: 0 6px 20px rgba(250, 82, 82, 0.5);
+            transform: translateY(-2px);
+        }
+
+        /* Location Section */
+        .location-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .location-details {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            margin-bottom: 1.5rem;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.8rem;
+            font-family: monospace;
+            font-size: 1.05rem;
+        }
+
+        .detail-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .detail-label {
+            color: var(--text-secondary);
+        }
+
+        .detail-value {
+            color: var(--accent-color);
+        }
+
+        .map-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        #map {
+            height: 250px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            z-index: 1;
+            /* For leaflet stacking */
+        }
+
+        .btn-directions {
+            background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-directions:hover {
+            box-shadow: 0 6px 20px rgba(0, 210, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-start-nav {
+            background: linear-gradient(135deg, #12b886 0%, #0ca678 100%);
+            box-shadow: 0 4px 15px rgba(18, 184, 134, 0.3);
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-start-nav:hover {
+            box-shadow: 0 6px 20px rgba(18, 184, 134, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .leaflet-routing-container {
+            display: none !important;
+        }
+
+        .radar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 1px solid var(--accent-glow);
+            position: relative;
+        }
+
+        .radar::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50%;
+            height: 2px;
+            background: var(--accent-color);
+            transform-origin: 0 50%;
+            animation: scan 4s linear infinite;
+        }
+
+        @keyframes scan {
+            from {
+                transform: translateY(-50%) rotate(0deg);
+            }
+
+            to {
+                transform: translateY(-50%) rotate(360deg);
+            }
+        }
+
+        @keyframes ripple {
+            0% {
+                box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.6);
+            }
+
+            70% {
+                box-shadow: 0 0 0 12px rgba(0, 210, 255, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(0, 210, 255, 0);
+            }
+        }
+
+        /* Logout Button */
+        .btn-logout {
+            background: rgba(250, 82, 82, 0.12);
+            color: #fa5252;
+            border: 1px solid rgba(250, 82, 82, 0.35);
+            border-radius: 10px;
+            padding: 6px 14px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .btn-logout:hover {
+            background: rgba(250, 82, 82, 0.25);
+            border-color: #fa5252;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(250, 82, 82, 0.2);
+        }
+
+        @keyframes ripple {
+            0% {
+                box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.6);
+            }
+
+            70% {
+                box-shadow: 0 0 0 12px rgba(0, 210, 255, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(0, 210, 255, 0);
+            }
+        }
+
+        /* ---- Vehicle Selection ---- */
+        .vehicle-panel {
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .vehicle-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+        }
+
+        .vehicle-card {
+            position: relative;
+            background: rgba(0, 0, 0, 0.25);
+            border: 2px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem 1.2rem 1.4rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .vehicle-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 18px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .vehicle-card:hover {
+            transform: translateY(-6px);
+        }
+
+        #card2W:hover {
+            border-color: #20c997;
+            box-shadow: 0 0 30px rgba(32, 201, 151, 0.35), inset 0 0 20px rgba(32, 201, 151, 0.05);
+        }
+
+        #card4W:hover {
+            border-color: #00d2ff;
+            box-shadow: 0 0 30px rgba(0, 210, 255, 0.35), inset 0 0 20px rgba(0, 210, 255, 0.05);
+        }
+
+        .vehicle-card.selected-2w {
+            border-color: #20c997;
+            background: rgba(32, 201, 151, 0.1);
+            box-shadow: 0 0 35px rgba(32, 201, 151, 0.45);
+        }
+
+        .vehicle-card.selected-4w {
+            border-color: #00d2ff;
+            background: rgba(0, 210, 255, 0.1);
+            box-shadow: 0 0 35px rgba(0, 210, 255, 0.45);
+        }
+
+        .vehicle-icon {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 1rem;
+            height: 80px;
+        }
+
+        .vehicle-label {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.3rem;
+        }
+
+        .vehicle-sublabel {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.8rem;
+        }
+
+        .vehicle-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .v2w {
+            background: rgba(32, 201, 151, 0.15);
+            color: #20c997;
+            border: 1px solid rgba(32, 201, 151, 0.4);
+        }
+
+        .v4w {
+            background: rgba(0, 210, 255, 0.15);
+            color: #00d2ff;
+            border: 1px solid rgba(0, 210, 255, 0.4);
+        }
+
+        /* Dashboard vehicle tag in header */
+        .vehicle-tag {
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 20px;
+            letter-spacing: 1px;
+        }
+
+        .vehicle-tag.tag-2w {
+            background: rgba(32, 201, 151, 0.15);
+            color: #20c997;
+            border: 1px solid rgba(32, 201, 151, 0.4);
+        }
+
+        .vehicle-tag.tag-4w {
+            background: rgba(0, 210, 255, 0.15);
+            color: #00d2ff;
+            border: 1px solid rgba(0, 210, 255, 0.4);
+        }
+
+        /* ---- Ride HUD Overlay ---- */
+        #rideHUD {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            width: min(520px, 94vw);
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(40px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        .ride-hud-inner {
+            background: rgba(9, 11, 16, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 210, 255, 0.35);
+            border-radius: 24px;
+            padding: 1.4rem 1.8rem;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 210, 255, 0.15);
+        }
+
+        .hud-top {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .hud-direction-icon {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            flex-shrink: 0;
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        .hud-direction-text {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.4;
+        }
+
+        .hud-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.8rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .hud-stat {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 0.8rem 0.6rem;
+            text-align: center;
+        }
+
+        .hud-stat-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 0.3rem;
+        }
+
+        .hud-stat-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent-color);
+        }
+
+        .btn-stop-ride {
+            width: 100%;
+            background: linear-gradient(135deg, #fa5252 0%, #e03131 100%);
+            box-shadow: 0 4px 15px rgba(250, 82, 82, 0.3);
+            border: none;
+            padding: 0.8rem;
+            font-size: 0.95rem;
+        }
+
+        .btn-stop-ride:hover {
+            box-shadow: 0 6px 20px rgba(250, 82, 82, 0.5);
+            transform: translateY(-2px);
+        }
+
+        /* Arrived banner */
+        .arrived-banner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(9, 11, 16, 0.95);
+            border: 2px solid #20c997;
+            border-radius: 24px;
+            padding: 2.5rem 3rem;
+            text-align: center;
+            z-index: 10000;
+            box-shadow: 0 0 60px rgba(32, 201, 151, 0.4);
+            animation: popIn 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+
+        @keyframes popIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.7);
+            }
+
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .arrived-banner h2 {
+            font-size: 2rem;
+            color: #20c997;
+            margin-bottom: 0.5rem;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        .arrived-banner p {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        @keyframes numberPulse {
+            0% {
+                transform: scale(1);
+                color: var(--enter-color);
+            }
+
+            50% {
+                transform: scale(1.1);
+                color: var(--accent-color);
+                text-shadow: 0 0 10px var(--accent-glow);
+            }
+
+            100% {
+                transform: scale(1);
+                color: var(--enter-color);
+            }
+        }
+
+        .pulse-update {
+            animation: numberPulse 0.5s ease;
+        }
+
+        /* ---- CSS END ---- */
+    </style>
+</head>
+
+<body>
+    <div id="loginView" class="login-wrap">
+        <div class="glass-panel login-panel">
+            <div class="logo" style="justify-content: center; margin-bottom: 2rem;">
+                <div class="pulse-dot"></div>
+                <h1 style="font-size: 1.8rem;">AI Parking Manager</h1>
+            </div>
+            <h2 id="authTitle"
+                style="text-align: center; margin-bottom: 2rem; font-size: 1.1rem; color: var(--text-primary);">Sign In
+                to
+                Dashboard</h2>
+
+            <form id="loginForm">
+                <div class="input-group">
+                    <label>Email or Mobile</label>
+                    <input type="text" id="loginId" placeholder="Enter email or mobile number" required>
+                </div>
+                <div class="input-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label>Password</label>
+                        <a href="#"
+                            style="color: var(--accent-color); text-decoration: none; font-size: 0.8rem; margin-bottom: 0.5rem;"
+                            onclick="alert('Password reset link sent to your registered contact.')">Forgot Password?</a>
+                    </div>
+                    <div class="password-wrapper">
+                        <input type="password" id="loginPassword" placeholder="Enter password" required>
+                        <button type="button" id="togglePassword" class="btn-toggle-password"
+                            title="Show/Hide Password">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2"
+                                fill="none" class="eye-icon">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="loginError"
+                    style="color: #ff6b6b; font-size: 0.85rem; margin-bottom: 1rem; text-align: center; display: none;">
+                </div>
+                <button type="submit" id="authSubmitBtn" class="btn btn-login" style="width: 100%;">Sign In</button>
+            </form>
+
+            <p id="toggleAuthWrapper"
+                style="text-align: center; margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                Don't have an account? <a href="#" id="toggleAuthMode"
+                    style="color: var(--accent-color); text-decoration: none;">Sign Up</a>
+            </p>
+
+            <div class="divider">
+                <span>OR</span>
+            </div>
+
+            <button type="button" class="btn btn-google" id="btnGoogleLogin">
+                <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        fill="#4285F4" />
+                    <path
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        fill="#34A853" />
+                    <path
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                        fill="#FBBC05" />
+                    <path
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                        fill="#EA4335" />
+                </svg>
+                Continue with Google
+            </button>
+        </div>
+    </div>
+
+    <!-- Vehicle Selection View -->
+    <div id="vehicleSelectionView" class="login-wrap" style="display: none;">
+        <div class="glass-panel vehicle-panel">
+            <div class="logo" style="justify-content: center; margin-bottom: 0.5rem;">
+                <div class="pulse-dot"></div>
+                <h1 style="font-size: 1.8rem;">AI Parking Manager</h1>
+            </div>
+            <h2 id="vehicleTitle"
+                style="text-align: center; color: var(--text-secondary); font-size: 1rem; margin-bottom: 0.4rem; text-transform: none; letter-spacing: 0;">
+                Select Your Vehicle Type</h2>
+            <p style="text-align:center; color: var(--text-secondary); font-size:0.85rem; margin-bottom: 2rem;">We'll
+                find the best parking spots for your vehicle.</p>
+
+            <div class="vehicle-grid">
+                <!-- Two Wheeler -->
+                <div class="vehicle-card" id="card2W" onclick="selectVehicle('two-wheeler')">
+                    <div class="vehicle-icon">
+                        <svg viewBox="0 0 64 64" width="72" height="72" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="14" cy="46" r="10" stroke="#20c997" stroke-width="3" fill="none" />
+                            <circle cx="50" cy="46" r="10" stroke="#20c997" stroke-width="3" fill="none" />
+                            <circle cx="14" cy="46" r="3" fill="#20c997" />
+                            <circle cx="50" cy="46" r="3" fill="#20c997" />
+                            <path d="M14 46 L28 24 L36 24 L50 46" stroke="#20c997" stroke-width="3"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M28 24 L32 14 L40 14" stroke="#20c997" stroke-width="3" stroke-linecap="round" />
+                            <path d="M36 24 L42 30" stroke="#20c997" stroke-width="3" stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    <div class="vehicle-label">Two Wheeler</div>
+                    <div class="vehicle-sublabel">Bike / Scooter / Motorcycle</div>
+                    <div class="vehicle-badge v2w">2W</div>
+                </div>
+
+                <!-- Four Wheeler -->
+                <div class="vehicle-card" id="card4W" onclick="selectVehicle('four-wheeler')">
+                    <div class="vehicle-icon">
+                        <svg viewBox="0 0 64 64" width="72" height="72" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="6" y="28" width="52" height="20" rx="4" stroke="#00d2ff" stroke-width="3"
+                                fill="none" />
+                            <path d="M14 28 L20 14 L44 14 L50 28" stroke="#00d2ff" stroke-width="3"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                            <circle cx="16" cy="48" r="7" stroke="#00d2ff" stroke-width="3" fill="none" />
+                            <circle cx="48" cy="48" r="7" stroke="#00d2ff" stroke-width="3" fill="none" />
+                            <circle cx="16" cy="48" r="2.5" fill="#00d2ff" />
+                            <circle cx="48" cy="48" r="2.5" fill="#00d2ff" />
+                            <line x1="6" y1="36" x2="58" y2="36" stroke="#00d2ff" stroke-width="1.5" opacity="0.4" />
+                        </svg>
+                    </div>
+                    <div class="vehicle-label">Four Wheeler</div>
+                    <div class="vehicle-sublabel">Car / SUV / Van</div>
+                    <div class="vehicle-badge v4w">4W</div>
+                </div>
+            </div>
+
+            <div id="vehicleError"
+                style="color: #ff6b6b; font-size: 0.85rem; text-align: center; margin-top: 1rem; display: none;">Please
+                select a vehicle type to continue.</div>
+
+            <button id="btnConfirmVehicle" class="btn btn-login" style="width: 100%; margin-top: 1.5rem;">Continue to
+                Dashboard →</button>
+        </div>
+    </div>
+
+    <div class="dashboard-wrap" id="dashboardView" style="display: none;">
+        <header class="glass-panel main-header">
+            <div class="logo">
+                <div class="pulse-dot"></div>
+                <h1>AI Parking Manager</h1>
+            </div>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <span id="vehicleTagDisplay" class="vehicle-tag" style="display:none;"></span>
+                <div class="status-indicator">System Active</div>
+                <button id="btnLogout" class="btn-logout" title="Sign Out">&#x2715; Logout</button>
+            </div>
+        </header>
+
+        <main class="dashboard-grid">
+            <!-- Parking Search Panel -->
+            <section class="glass-panel search-section panel-large">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="margin-bottom: 0;">Available Parking Nearby</h2>
+                    <div class="search-bar-wrap" style="width: 320px; display: flex; gap: 8px;">
+                        <input type="text" id="parkingSearch" placeholder="Search locations..."
+                            style="flex: 1; padding: 10px 12px; border-radius: 4px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: var(--text-primary); font-family: 'Outfit', sans-serif; font-size: 0.95rem; outline: none; transition: border-color 0.2s;">
+                        <button id="btnSearch" class="btn btn-login"
+                            style="margin: 0; padding: 10px 16px; border-radius: 4px; border: none; font-size: 0.9rem; font-weight: 600; cursor: pointer; width: auto;">Search</button>
+                    </div>
+                </div>
+                <div class="parking-list-container" id="parkingList">
+                    <div class="scanning-ui">
+                        <div class="radar large"></div>
+                        <p>Scanning area for available parking locations...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Stats Panel -->
+            <section class="glass-panel stats-section">
+                <h2 id="analyticsTitle">Facility Analytics</h2>
+                <p id="analyticsLocation"
+                    style="color: var(--accent-color); font-weight: 600; font-size: 1.1rem; margin-top: -1rem; margin-bottom: 0.5rem;">
+                </p>
+                <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">Select a parking
+                    location
+                    from the list to view its details.</p>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Available Slots</div>
+                        <div class="stat-value highlight" id="statAvailable">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Occupied (Full)</div>
+                        <div class="stat-value" id="statFull">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Capacity</div>
+                        <div class="stat-value" id="statTotal">--</div>
+                    </div>
+                </div>
+
+                <!-- Interactive Controls -->
+                <div class="controls" id="simulationControls"
+                    style="display: none; margin-top: 1.5rem; text-align: center;">
+                    <div class="status-indicator" style="display: inline-block; animation: pulse 2s infinite;">Live
+                        Traffic
+                        Monitoring Active</div>
+                </div>
+            </section>
+
+            <!-- Location Panel -->
+            <section class="glass-panel location-section">
+                <h2>Live Location Data</h2>
+                <div class="location-details">
+                    <div class="detail-row">
+                        <span class="detail-label">Latitude:</span>
+                        <span class="detail-value" id="latValue">Awaiting signal...</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Longitude:</span>
+                        <span class="detail-value" id="lngValue">Awaiting signal...</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Accuracy:</span>
+                        <span class="detail-value" id="accValue">-- m</span>
+                    </div>
+                </div>
+                <div class="map-container">
+                    <div id="map"></div>
+                    <iframe id="googleMap" width="100%" height="250"
+                        style="border:0; border-radius: 16px; border: 1px solid var(--glass-border); display: none;"
+                        allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                    <div id="directionsWrapper"
+                        style="display: none; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                        <a href="#" id="btnDirections" target="_blank" class="btn btn-directions">Get Directions</a>
+                        <button id="btnStartNav" class="btn btn-start-nav">&#9654; Start</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <!-- Ride HUD Overlay -->
+    <div id="rideHUD" style="display:none;">
+        <div class="ride-hud-inner">
+            <div class="hud-top">
+                <div class="hud-direction-icon" id="hudIcon">↑</div>
+                <div class="hud-direction-text" id="hudText">Getting route...</div>
+            </div>
+            <div class="hud-stats">
+                <div class="hud-stat">
+                    <div class="hud-stat-label">Distance Left</div>
+                    <div class="hud-stat-value" id="hudDist">--</div>
+                </div>
+                <div class="hud-stat">
+                    <div class="hud-stat-label">Est. Time</div>
+                    <div class="hud-stat-value" id="hudTime">--</div>
+                </div>
+                <div class="hud-stat">
+                    <div class="hud-stat-label">Speed</div>
+                    <div class="hud-stat-value" id="hudSpeed">30 km/h</div>
+                </div>
+            </div>
+            <button id="btnStopRide" class="btn btn-stop-ride">&#9632; Stop Ride</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <script>
+        /* ---- JS START ---- */
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // State
+            let currentSelectedLot = null;
+            let selectedVehicleType = null; // 'two-wheeler' | 'four-wheeler'
+
+            // ---- Persistent Session Check ----
+            const SESSION_KEY = 'parking_session';
+
+            function saveSession(email) {
+                localStorage.setItem(SESSION_KEY, JSON.stringify({ email, ts: Date.now() }));
+            }
+
+            function clearSession() {
+                localStorage.removeItem(SESSION_KEY);
+            }
+
+            function getSession() {
+                try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch (e) { return null; }
+            }
+            let mockParkingData = []; // Now dynamic
+            let searchTimeout = null;
+
+            // DOM Elements
+            const analyticsTitle = document.getElementById('analyticsTitle');
+            const statAvailable = document.getElementById('statAvailable');
+            const statFull = document.getElementById('statFull');
+            const statTotal = document.getElementById('statTotal');
+            const simulationControls = document.getElementById('simulationControls');
+
+            const parkingList = document.getElementById('parkingList');
+            let searchPerformed = false;
+
+            const latValue = document.getElementById('latValue');
+            const lngValue = document.getElementById('lngValue');
+            const accValue = document.getElementById('accValue');
+            const btnDirections = document.getElementById('btnDirections');
+            const btnStartNav = document.getElementById('btnStartNav');
+            const directionsWrapper = document.getElementById('directionsWrapper');
+            const analyticsLocation = document.getElementById('analyticsLocation');
+            const parkingSearch = document.getElementById('parkingSearch');
+
+            let searchQuery = '';
+            let map = null;
+            let markers = [];
+            let userMarker = null;
+            let currentRoute = null;
+            let rideCoords = [];       // flat LatLng[] from routesfound
+            let rideInstructions = []; // turn instructions from routesfound
+            let rideStepIndex = 0;
+            let rideTimer = null;
+            let isRiding = false;
+
+            const btnSearch = document.getElementById('btnSearch');
+
+            async function doSearch() {
+                if (!parkingSearch) return;
+                const val = parkingSearch.value.trim();
+                if (!val) {
+                    searchQuery = '';
+                    renderParkingList();
+                    return;
+                }
+
+                try {
+                    if (btnSearch) btnSearch.innerText = '...';
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}`);
+                    const data = await res.json();
+
+                    if (data && data.length > 0) {
+                        const lat = parseFloat(data[0].lat);
+                        const lng = parseFloat(data[0].lon);
+
+                        searchQuery = '';
+                        parkingSearch.value = data[0].display_name.split(',')[0];
+
+                        performParkingSearch(lat, lng, true);
+                    } else {
+                        searchQuery = val.toLowerCase();
+                        renderParkingList();
+                    }
+                } catch (e) {
+                    console.warn('Geocode error', e);
+                    searchQuery = val.toLowerCase();
+                    renderParkingList();
+                } finally {
+                    if (btnSearch) btnSearch.innerText = 'Search';
+                }
+            }
+
+            if (parkingSearch) {
+                parkingSearch.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        doSearch();
+                    }
+                });
+            }
+
+            if (btnSearch) {
+                btnSearch.addEventListener('click', doSearch);
+            }
+
+            // --- Login Logic ---
+            const loginView = document.getElementById('loginView');
+            const dashboardView = document.getElementById('dashboardView');
+            const loginForm = document.getElementById('loginForm');
+            const btnGoogleLogin = document.getElementById('btnGoogleLogin');
+            const togglePasswordBtn = document.getElementById('togglePassword');
+            const loginPasswordInput = document.getElementById('loginPassword');
+
+            const authTitle = document.getElementById('authTitle');
+            const authSubmitBtn = document.getElementById('authSubmitBtn');
+            const toggleAuthMode = document.getElementById('toggleAuthMode');
+            const toggleAuthWrapper = document.getElementById('toggleAuthWrapper');
+            let isSignUpMode = false;
+
+            function bindToggleClick() {
+                const toggleBtn = document.getElementById('toggleAuthMode');
+                if (!toggleBtn) return;
+
+                toggleBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    isSignUpMode = !isSignUpMode;
+                    const errorMsg = document.getElementById('loginError');
+                    if (errorMsg) {
+                        errorMsg.style.display = 'none';
+                        errorMsg.style.color = '#ff6b6b';
+                    }
+
+                    if (isSignUpMode) {
+                        authTitle.innerText = 'Create Account';
+                        authSubmitBtn.innerText = 'Sign Up';
+                        toggleAuthWrapper.innerHTML = `Already have an account? <a href="#" id="toggleAuthMode" style="color: var(--accent-color); text-decoration: none;">Sign In</a>`;
+                    } else {
+                        authTitle.innerText = 'Sign In to Dashboard';
+                        authSubmitBtn.innerText = 'Sign In';
+                        toggleAuthWrapper.innerHTML = `Don't have an account? <a href="#" id="toggleAuthMode" style="color: var(--accent-color); text-decoration: none;">Sign Up</a>`;
+                    }
+                    bindToggleClick(); // re-bind listener
+                });
+            }
+
+            bindToggleClick();
+
+            if (togglePasswordBtn && loginPasswordInput) {
+                togglePasswordBtn.addEventListener('click', () => {
+                    const type = loginPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    loginPasswordInput.setAttribute('type', type);
+
+                    if (type === 'text') {
+                        togglePasswordBtn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+                    } else {
+                        togglePasswordBtn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+                    }
+                });
+            }
+
+            const vehicleSelectionView = document.getElementById('vehicleSelectionView');
+            const btnConfirmVehicle = document.getElementById('btnConfirmVehicle');
+            const vehicleTagDisplay = document.getElementById('vehicleTagDisplay');
+            const vehicleError = document.getElementById('vehicleError');
+
+            // Global so onclick="selectVehicle(...)" in HTML can access it
+            window.selectVehicle = function (type) {
+                selectedVehicleType = type;
+                document.getElementById('card2W').classList.remove('selected-2w', 'selected-4w');
+                document.getElementById('card4W').classList.remove('selected-2w', 'selected-4w');
+                if (vehicleError) vehicleError.style.display = 'none';
+                if (type === 'two-wheeler') {
+                    document.getElementById('card2W').classList.add('selected-2w');
+                } else {
+                    document.getElementById('card4W').classList.add('selected-4w');
+                }
+            };
+
+            if (btnConfirmVehicle) {
+                btnConfirmVehicle.addEventListener('click', () => {
+                    if (!selectedVehicleType) {
+                        if (vehicleError) vehicleError.style.display = 'block';
+                        return;
+                    }
+                    if (vehicleTagDisplay) {
+                        vehicleTagDisplay.style.display = 'inline-block';
+                        if (selectedVehicleType === 'two-wheeler') {
+                            vehicleTagDisplay.textContent = '\uD83C\uDFCD\uFE0F Two Wheeler';
+                            vehicleTagDisplay.className = 'vehicle-tag tag-2w';
+                        } else {
+                            vehicleTagDisplay.textContent = '\uD83D\uDE97 Four Wheeler';
+                            vehicleTagDisplay.className = 'vehicle-tag tag-4w';
+                        }
+                    }
+                    vehicleSelectionView.style.opacity = '0';
+                    vehicleSelectionView.style.transform = 'scale(0.95)';
+                    vehicleSelectionView.style.transition = 'all 0.4s ease';
+                    setTimeout(() => {
+                        vehicleSelectionView.style.display = 'none';
+                        if (dashboardView) dashboardView.style.display = 'flex';
+                        if (map) map.invalidateSize();
+                        initGeolocation();
+                    }, 400);
+                });
+            }
+
+            function showVehicleSelection() {
+                if (loginView) loginView.style.display = 'none';
+                if (vehicleSelectionView) {
+                    vehicleSelectionView.style.display = 'flex';
+                    vehicleSelectionView.style.opacity = '1';
+                    vehicleSelectionView.style.transform = 'scale(1)';
+                }
+            }
+
+            function showDashboard(e) {
+                if (e) e.preventDefault();
+                if (!selectedVehicleType) {
+                    if (loginView) {
+                        loginView.style.opacity = '0';
+                        loginView.style.transform = 'scale(0.95)';
+                        loginView.style.transition = 'all 0.4s ease';
+                        setTimeout(() => {
+                            loginView.style.display = 'none';
+                            showVehicleSelection();
+                        }, 400);
+                    } else {
+                        showVehicleSelection();
+                    }
+                    return;
+                }
+                if (loginView) {
+                    loginView.style.opacity = '0';
+                    loginView.style.transform = 'scale(0.95)';
+                    loginView.style.transition = 'all 0.4s ease';
+                    setTimeout(() => {
+                        loginView.style.display = 'none';
+                        if (dashboardView) dashboardView.style.display = 'flex';
+                        if (map) map.invalidateSize();
+                        initGeolocation();
+                    }, 400);
+                }
+            }
+
+            if (loginForm) {
+                loginForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const email = document.getElementById('loginId').value.trim();
+                    const pass = document.getElementById('loginPassword').value;
+                    const errorMsg = document.getElementById('loginError');
+
+                    if (isSignUpMode) {
+                        if (email.length < 3 || pass.length < 4) {
+                            errorMsg.style.display = 'block';
+                            errorMsg.style.color = '#ff6b6b';
+                            errorMsg.innerText = 'Email must be at least 3 chars and password at least 4 chars.';
+                            return;
+                        }
+                        // Get existing users
+                        let users = JSON.parse(localStorage.getItem('parking_users') || "{}");
+                        if (users[email]) {
+                            errorMsg.style.display = 'block';
+                            errorMsg.style.color = '#ff6b6b';
+                            errorMsg.innerText = 'Account with this email/mobile already exists.';
+                            return;
+                        }
+                        users[email] = pass;
+                        localStorage.setItem('parking_users', JSON.stringify(users));
+
+                        document.getElementById('toggleAuthMode').click(); // switch back to sign in
+
+                        // Show success
+                        const newErrorMsg = document.getElementById('loginError');
+                        newErrorMsg.style.display = 'block';
+                        newErrorMsg.style.color = '#20c997';
+                        newErrorMsg.innerText = 'Account created successfully! Please Sign In.';
+
+                        document.getElementById('loginId').value = email;
+                        document.getElementById('loginPassword').value = '';
+                    } else {
+                        let users = JSON.parse(localStorage.getItem('parking_users') || "{}");
+
+                        if ((email === 'admin' && pass === 'password') || (users[email] && users[email] === pass)) {
+                            errorMsg.style.display = 'none';
+                            showDashboard();
+                        } else {
+                            errorMsg.style.display = 'block';
+                            errorMsg.style.color = '#ff6b6b';
+                            errorMsg.innerText = 'Mobile/Email and password do not match. Please try again.';
+                        }
+                    }
+                });
+            }
+
+            // Logout logic
+            function logout() {
+                clearSession();
+                selectedVehicleType = null;
+                if (dashboardView) dashboardView.style.display = 'none';
+                if (vehicleSelectionView) vehicleSelectionView.style.display = 'none';
+                if (loginView) {
+                    loginView.style.display = 'flex';
+                    loginView.style.opacity = '1';
+                    loginView.style.transform = 'scale(1)';
+                }
+                // Reset vehicle card selection UI
+                const c2 = document.getElementById('card2W');
+                const c4 = document.getElementById('card4W');
+                if (c2) c2.classList.remove('selected-2w', 'selected-4w');
+                if (c4) c4.classList.remove('selected-2w', 'selected-4w');
+                const vtag = document.getElementById('vehicleTagDisplay');
+                if (vtag) { vtag.style.display = 'none'; vtag.textContent = ''; }
+            }
+
+            const btnLogout = document.getElementById('btnLogout');
+            if (btnLogout) btnLogout.addEventListener('click', logout);
+
+            // ---- Auto-login from session removed to ask for login every time ----
+
+            if (btnGoogleLogin) btnGoogleLogin.addEventListener('click', showDashboard);
+
+            // Logic: Dashboard Analytics Display
+            function updateAnalyticsDisplay(autoUpdate = false) {
+                if (!currentSelectedLot) return;
+
+                analyticsTitle.innerText = currentSelectedLot.name;
+                if (analyticsLocation) {
+                    analyticsLocation.innerText = `📍 ${currentSelectedLot.address}`;
+                }
+
+                statAvailable.innerText = currentSelectedLot.available;
+                statFull.innerText = currentSelectedLot.total - currentSelectedLot.available;
+                statTotal.innerText = currentSelectedLot.total;
+
+                simulationControls.style.display = 'block';
+
+                // Animation effect
+                statAvailable.style.transform = 'scale(1.2)';
+                setTimeout(() => {
+                    statAvailable.style.transform = 'scale(1)';
+                }, 150);
+
+                // Update list UI to match
+                renderParkingList();
+
+                // Map logic - only fly if not an automatic traffic background update
+                if (!autoUpdate && map && currentSelectedLot.lat && currentSelectedLot.lng) {
+                    map.flyTo([currentSelectedLot.lat, currentSelectedLot.lng], 16, { animate: true, duration: 1 });
+
+                    if (currentRoute) {
+                        map.removeControl(currentRoute);
+                    }
+
+                    if (L.Routing) {
+                        currentRoute = L.Routing.control({
+                            waypoints: [
+                                L.latLng(currentLat, currentLng),
+                                L.latLng(currentSelectedLot.lat, currentSelectedLot.lng)
+                            ],
+                            createMarker: function () { return null; },
+                            lineOptions: {
+                                styles: [{ color: '#00d2ff', opacity: 0.8, weight: 6 }]
+                            },
+                            show: false,
+                            addWaypoints: false,
+                            draggableWaypoints: false,
+                            fitSelectedRoutes: true,
+                            showAlternatives: false
+                        }).addTo(map);
+
+                        // Capture route coordinates when found
+                        currentRoute.on('routesfound', function (e) {
+                            const route = e.routes[0];
+                            rideCoords = route.coordinates;        // array of LatLng
+                            rideInstructions = route.instructions; // turn-by-turn
+                        });
+                    }
+
+                    if (directionsWrapper) {
+                        directionsWrapper.style.display = 'flex';
+                        btnDirections.href = `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${currentSelectedLot.lat},${currentSelectedLot.lng}`;
+                    }
+
+                    const googleMapIframe = document.getElementById('googleMap');
+                    const leafletMap = document.getElementById('map');
+                    if (googleMapIframe && leafletMap) {
+                        leafletMap.style.display = 'block';
+                        googleMapIframe.style.display = 'none';
+                    }
+                }
+            }
+
+            // ---- Ride Simulation ----
+            function getDirectionArrow(type) {
+                const arrows = {
+                    'SlightRight': '↗', 'Right': '→', 'SharpRight': '↘',
+                    'SlightLeft': '↖', 'Left': '←', 'SharpLeft': '↙',
+                    'Straight': '↑', 'DestinationReached': '🏁',
+                    'Roundabout': '↻', 'WaypointReached': '★'
+                };
+                return arrows[type] || '↑';
+            }
+
+            function formatDist(meters) {
+                return meters >= 1000 ? (meters / 1000).toFixed(1) + ' km' : Math.round(meters) + ' m';
+            }
+
+            function formatTime(seconds) {
+                if (seconds < 60) return seconds + ' sec';
+                const m = Math.floor(seconds / 60);
+                return m < 60 ? m + ' min' : Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+            }
+
+            function startRideSimulation() {
+                if (rideCoords.length < 2) {
+                    alert('Route not ready yet. Please wait a moment and try again.');
+                    return;
+                }
+                if (isRiding) return;
+                isRiding = true;
+                rideStepIndex = 0;
+
+                const hud = document.getElementById('rideHUD');
+                const hudText = document.getElementById('hudText');
+                const hudIcon = document.getElementById('hudIcon');
+                const hudDist = document.getElementById('hudDist');
+                const hudTime = document.getElementById('hudTime');
+                if (hud) hud.style.display = 'block';
+
+                // Show Leaflet map during ride
+                const googleMapIframe = document.getElementById('googleMap');
+                const leafletMap = document.getElementById('map');
+                if (leafletMap) leafletMap.style.display = 'block';
+                if (googleMapIframe) googleMapIframe.style.display = 'none';
+                if (map) map.invalidateSize();
+
+                const totalPoints = rideCoords.length;
+                const SPEED_PPS = 12; // points per tick (controls playback speed)
+                const TICK_MS = 150;  // ms per tick
+
+                // Build instruction lookup by coordinate index
+                let instrIdx = 0;
+
+                function tick() {
+                    if (!isRiding || rideStepIndex >= totalPoints) {
+                        finishRide();
+                        return;
+                    }
+
+                    const coord = rideCoords[rideStepIndex];
+                    const lat = coord.lat;
+                    const lng = coord.lng;
+
+                    // Move marker
+                    if (userMarker) userMarker.setLatLng([lat, lng]);
+                    if (map) map.panTo([lat, lng], { animate: true, duration: 0.1 });
+
+                    // Update lat/lng displays
+                    if (latValue) latValue.innerText = lat.toFixed(6);
+                    if (lngValue) lngValue.innerText = lng.toFixed(6);
+
+                    // Remaining distance (straight-line approximation)
+                    const dest = rideCoords[totalPoints - 1];
+                    const dLat = (lat - dest.lat) * 111000;
+                    const dLng = (lng - dest.lng) * 111000 * Math.cos(lat * Math.PI / 180);
+                    const distLeft = Math.sqrt(dLat * dLat + dLng * dLng);
+                    const speed = 30; // km/h sim
+                    const timeLeft = (distLeft / (speed * 1000 / 3600));
+                    if (hudDist) hudDist.innerText = formatDist(distLeft);
+                    if (hudTime) hudTime.innerText = formatTime(Math.round(timeLeft));
+
+                    // Update instruction text
+                    if (rideInstructions && rideInstructions.length) {
+                        // Find current instruction
+                        while (instrIdx < rideInstructions.length - 1 &&
+                            rideInstructions[instrIdx].index <= rideStepIndex) {
+                            instrIdx++;
+                        }
+                        const instr = rideInstructions[instrIdx];
+                        if (instr) {
+                            if (hudIcon) hudIcon.innerText = getDirectionArrow(instr.type);
+                            if (hudText) hudText.innerText = instr.text || 'Continue straight';
+                        }
+                    } else {
+                        if (hudText) hudText.innerText = 'Navigating to ' + (currentSelectedLot ? currentSelectedLot.name : 'destination');
+                    }
+
+                    rideStepIndex += SPEED_PPS;
+                    rideTimer = setTimeout(tick, TICK_MS);
+                }
+
+                tick();
+            }
+
+            function stopRide() {
+                isRiding = false;
+                if (rideTimer) clearTimeout(rideTimer);
+                const hud = document.getElementById('rideHUD');
+                if (hud) hud.style.display = 'none';
+            }
+
+            function finishRide() {
+                isRiding = false;
+                if (rideTimer) clearTimeout(rideTimer);
+                const hud = document.getElementById('rideHUD');
+                if (hud) hud.style.display = 'none';
+
+                // Move marker to exact destination
+                if (currentSelectedLot && userMarker) {
+                    userMarker.setLatLng([currentSelectedLot.lat, currentSelectedLot.lng]);
+                }
+
+                // Show arrived banner
+                const banner = document.createElement('div');
+                banner.className = 'arrived-banner';
+                banner.innerHTML = `
+      <h2>\uD83C\uDFC1 You've Arrived!</h2>
+      <p>Welcome to <strong>${currentSelectedLot ? currentSelectedLot.name : 'your destination'}</strong></p>
+      <button class="btn btn-login" style="width:100%;" onclick="this.closest('.arrived-banner').remove()">OK</button>
+    `;
+                document.body.appendChild(banner);
+            }
+
+            // Wire up Start button — opens Google Maps AND starts internal simulation
+            if (btnStartNav) {
+                btnStartNav.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (!currentSelectedLot || !currentSelectedLot.lat || !currentSelectedLot.lng) {
+                        alert('Please select a parking lot first.');
+                        return;
+                    }
+
+                    // 1. Start internal dashboard simulation
+                    startRideSimulation();
+
+                    // 2. Open external Google Maps for live navigation
+                    const url = `https://www.google.com/maps/dir/?api=1` +
+                        `&origin=${currentLat},${currentLng}` +
+                        `&destination=${currentSelectedLot.lat},${currentSelectedLot.lng}` +
+                        `&travelmode=driving` +
+                        `&dir_action=navigate`;
+                    window.open(url, '_blank');
+                });
+            }
+
+            const btnStopRide = document.getElementById('btnStopRide');
+            if (btnStopRide) btnStopRide.addEventListener('click', stopRide);
+
+
+            // Logic: Parking Availability Search
+            let currentLat = 0;
+            let currentLng = 0;
+
+            function renderParkingList() {
+                // Keep scanning UI if not performed
+                if (!searchPerformed) return;
+
+                parkingList.innerHTML = ''; // Clear
+
+                // Filter logic
+                const filteredLots = mockParkingData.filter(lot =>
+                    lot.name.toLowerCase().includes(searchQuery) ||
+                    lot.address.toLowerCase().includes(searchQuery)
+                );
+
+                if (filteredLots.length === 0) {
+                    parkingList.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">No matching parking locations found.</div>';
+                    return;
+                }
+
+                filteredLots.forEach(lot => {
+                    const item = document.createElement('div');
+                    item.className = 'parking-item';
+                    if (currentSelectedLot && currentSelectedLot.id === lot.id) {
+                        item.classList.add('active-lot');
+                    }
+
+                    // Select the lot
+                    item.onclick = () => {
+                        currentSelectedLot = lot;
+                        updateAnalyticsDisplay();
+                    };
+
+                    // Double click to get directions
+                    item.ondblclick = () => {
+                        if (lot.lat && lot.lng) {
+                            const url = `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${lot.lat},${lot.lng}`;
+                            window.open(url, '_blank');
+                        }
+                    };
+
+                    item.innerHTML = `
+        <div class="parking-info">
+          <h3>${lot.name}</h3>
+          <p>Distance: ${lot.dist} | ${lot.address}</p>
+        </div>
+        <div class="parking-status">
+          <div class="spots-available ${lot.justUpdated ? 'pulse-update' : ''}">${lot.available}</div>
+          <div class="spots-total">/ ${lot.total} spots</div>
+        </div>
+      `;
+                    // Clear flag after use
+                    lot.justUpdated = false;
+
+                    parkingList.appendChild(item);
+                });
+            }
+
+            function initMap(lat, lng) {
+                const mapElement = document.getElementById('map');
+                if (!mapElement) return;
+
+                map = L.map('map').setView([lat, lng], 14);
+
+                // Add dark matter tiles to fit the aesthetic
+                L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                    attribution: '&copy; Google Maps',
+                    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                    maxZoom: 20
+                }).addTo(map);
+
+                const userIcon = L.divIcon({
+                    className: '',
+                    html: `<div style="
+        width: 18px; height: 18px;
+        background: #00d2ff;
+        border: 3px solid #fff;
+        border-radius: 50%;
+        box-shadow: 0 0 0 0 rgba(0,210,255,0.6);
+        animation: ripple 1.5s infinite;
+      "></div>`,
+                    iconSize: [18, 18],
+                    iconAnchor: [9, 9]
+                });
+
+                userMarker = L.marker([lat, lng], { icon: userIcon, zIndexOffset: 1000 })
+                    .addTo(map)
+                    .bindPopup('\uD83D\uDCCD You are here')
+                    .openPopup();
+            }
+
+            async function performParkingSearch(lat, lng, isNewLocation = false) {
+                if (!searchPerformed) {
+                    searchPerformed = true;
+                }
+                currentLat = lat;
+                currentLng = lng;
+
+                // Clear previous timeout to prevent duplicate concurrent searches
+                if (searchTimeout) clearTimeout(searchTimeout);
+
+                searchTimeout = setTimeout(async () => {
+                    try {
+                        // Fetch REAL parking locations from Overpass API (OpenStreetMap)
+                        // Searching within 3km radius
+                        const overpassUrl = `https://overpass-api.de/api/interpreter?data=[out:json];node["amenity"="parking"](around:3000,${lat},${lng});out;`;
+                        const response = await fetch(overpassUrl);
+                        const data = await response.json();
+
+                        const realLots = (data.elements || []).map(el => {
+                            const name = el.tags.name || el.tags.operator || "Public Parking";
+                            const fee = el.tags.fee === 'yes' ? ' (Paid)' : '';
+                            
+                            // Calculate distance
+                            const dLat = (lat - el.lat) * 111; // approx km
+                            const dLng = (lng - el.lon) * 111 * Math.cos(lat * Math.PI / 180);
+                            const dist = Math.sqrt(dLat * dLat + dLng * dLng);
+
+                            return {
+                                id: el.id,
+                                name: name + fee,
+                                address: el.tags['addr:street'] || "Nearby Location",
+                                dist: dist.toFixed(2) + " km",
+                                rawDist: dist,
+                                lat: el.lat,
+                                lng: el.lon,
+                                total: Math.floor(Math.random() * 200) + 50,
+                                available: Math.floor(Math.random() * 50) + 5
+                            };
+                        });
+
+                        // Sort by distance
+                        realLots.sort((a, b) => a.rawDist - b.rawDist);
+                        
+                        // Limit to top 15 results to prevent clutter
+                        mockParkingData = realLots.slice(0, 15);
+
+                        // If no real results, fallback to some synthetic ones around current location
+                        if (mockParkingData.length === 0) {
+                            mockParkingData = [
+                                { id: Date.now() + 1, name: "Street Parking - Zone A", address: "Main St", dist: "0.1 km", available: 5, total: 20, lat: lat + 0.002, lng: lng + 0.002 },
+                                { id: Date.now() + 2, name: "City Mall Parking", address: "Park Avenue", dist: "0.4 km", available: 22, total: 100, lat: lat - 0.003, lng: lng + 0.001 },
+                                { id: Date.now() + 3, name: "Office Complex P1", address: "Corporate Rd", dist: "0.7 km", available: 0, total: 50, lat: lat + 0.005, lng: lng - 0.004 }
+                            ];
+                        }
+
+                        // Ensure map is initialized
+                        if (!map) {
+                            initMap(lat, lng);
+                        }
+
+                        // Clear existing markers
+                        if (map) {
+                            if (markers.length > 0) {
+                                markers.forEach(m => map.removeLayer(m));
+                                markers = [];
+                            }
+
+                            if (isNewLocation) {
+                                map.flyTo([lat, lng], 14, { animate: true, duration: 1.5 });
+                            }
+
+                            function createPopupHtml(lot, curLat, curLng) {
+                                return `
+                                    <div style="text-align: center; min-width: 140px; padding: 4px;">
+                                        <b style="font-size: 1.1rem; color: #fff;">${lot.name}</b><br>
+                                        <span style="color: #20c997; font-weight: bold; font-size: 1.15rem;">${lot.available}</span> <span style="color: #ccc;">slots available</span><br><br>
+                                        <div style="display:flex; gap:6px; justify-content:center;">
+                                            <a href="https://www.google.com/maps/dir/?api=1&origin=${curLat},${curLng}&destination=${lot.lat},${lot.lng}&dir_action=navigate" target="_blank" style="padding: 5px 10px; background: #00d2ff; color: #000; border-radius: 6px; text-decoration: none; font-weight: bold; flex: 1;">Start</a>
+                                            <a href="https://www.google.com/maps/dir/?api=1&origin=${curLat},${curLng}&destination=${lot.lat},${lot.lng}" target="_blank" style="padding: 5px 10px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; text-decoration: none; flex: 1;">Route</a>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+
+                            mockParkingData.forEach((lot) => {
+                                const m = L.circleMarker([lot.lat, lot.lng], {
+                                    color: lot.available > 0 ? '#20c997' : '#fa5252',
+                                    radius: 7,
+                                    fillOpacity: 0.8
+                                }).addTo(map)
+                                    .bindPopup(createPopupHtml(lot, currentLat, currentLng));
+
+                                m.on('click', () => {
+                                    currentSelectedLot = lot;
+                                    updateAnalyticsDisplay();
+                                });
+
+                                m.on('dblclick', () => {
+                                    const url = `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${lot.lat},${lot.lng}`;
+                                    window.open(url, '_blank');
+                                });
+                                markers.push(m);
+                            });
+                        }
+
+                        renderParkingList();
+
+                    } catch (error) {
+                        console.error("Error fetching real-time parking data:", error);
+                        // Fallback logic here if needed
+                    }
+                }, isNewLocation ? 300 : 2000);
+            }
+
+            // Logic: Geolocation Access
+            function initGeolocation() {
+                if ("geolocation" in navigator) {
+                    const geoOptions = {
+                        enableHighAccuracy: true,
+                        maximumAge: 30000,
+                        timeout: 27000
+                    };
+
+                    function geoSuccess(position) {
+                        latValue.innerText = position.coords.latitude.toFixed(6);
+                        lngValue.innerText = position.coords.longitude.toFixed(6);
+                        accValue.innerText = `\u00B1 ${Math.round(position.coords.accuracy)} m`;
+
+                        performParkingSearch(position.coords.latitude, position.coords.longitude);
+                    }
+
+                    function geoError(error) {
+                        console.warn(`ERROR(${error.code}): ${error.message}`);
+                        latValue.innerText = "Location access denied";
+                        lngValue.innerText = "Location access denied";
+                    }
+
+                    // Watch position continuously updates
+                    navigator.geolocation.watchPosition(geoSuccess, geoError, geoOptions);
+                } else {
+                    latValue.innerText = "Geolocation not supported";
+                    lngValue.innerText = "Geolocation not supported";
+                }
+            }
+
+            // --- Live Automated Traffic Simulation (Enhanced Velocity) ---
+            setInterval(() => {
+                if (!searchPerformed || mockParkingData.length === 0) return;
+
+                // Process 1-3 updates per tick for multi-lot activity
+                const updateCount = Math.floor(Math.random() * 3) + 1;
+                let anyChanged = false;
+
+                for (let i = 0; i < updateCount; i++) {
+                    const lotIndex = Math.floor(Math.random() * mockParkingData.length);
+                    const lot = mockParkingData[lotIndex];
+                    const isExit = Math.random() > 0.5;
+
+                    if (isExit && lot.available < lot.total) {
+                        lot.available++;
+                        lot.justUpdated = true;
+                        anyChanged = true;
+                    } else if (!isExit && lot.available > 0) {
+                        lot.available--;
+                        lot.justUpdated = true;
+                        anyChanged = true;
+                    }
+
+                    if (anyChanged && markers[lotIndex] && lot.lat && lot.lng) {
+                        markers[lotIndex].setPopupContent(`
+              <div style="text-align: center; min-width: 140px; padding: 4px;">
+                <b style="font-size: 1.1rem; color: #fff;">${lot.name}</b><br>
+                <span style="color: #20c997; font-weight: bold; font-size: 1.15rem;">${lot.available}</span> <span style="color: #ccc;">slots available</span><br><br>
+                <div style="display:flex; gap:6px; justify-content:center;">
+                  <a href="https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${lot.lat},${lot.lng}&dir_action=navigate" target="_blank" style="padding: 5px 10px; background: #00d2ff; color: #000; border-radius: 6px; text-decoration: none; font-weight: bold; flex: 1;">Start</a>
+                  <a href="https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${lot.lat},${lot.lng}" target="_blank" style="padding: 5px 10px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; text-decoration: none; flex: 1;">Route</a>
+                </div>
+              </div>
+            `);
+                    }
+                }
+
+                if (anyChanged) {
+                    if (currentSelectedLot) {
+                        const currentLotData = mockParkingData.find(m => m.id === currentSelectedLot.id);
+                        if (currentLotData) {
+                            // Keep the currentSelectedLot object in sync
+                            currentSelectedLot.available = currentLotData.available;
+                        }
+                        updateAnalyticsDisplay(true);
+                    }
+                    renderParkingList();
+                }
+            }, 1200); // Faster updates for "instant" feel
+
+
+        });
+        /* ---- JS END ---- */
+    </script>
+</body>
+
+</html>
