@@ -19,10 +19,10 @@ document.addEventListener('DOMContentLoaded', () => {
     try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch(e) { return null; }
   }
   const mockParkingData = [
-    { id: 1, name: "Central Plaza Garage", address: "100 Main St, City Center", dist: "0.2 km", available: 14, total: 150 },
-    { id: 2, name: "Downtown Underground", address: "400 Broad St, Downtown", dist: "0.5 km", available: 3, total: 200 },
-    { id: 3, name: "Eastside Open Lot", address: "89 East Ave", dist: "0.8 km", available: 45, total: 80 },
-    { id: 4, name: "Station Park & Ride", address: "Train Station Hub, North", dist: "1.2 km", available: 112, total: 500 }
+    { id: 1, name: "TrustPark - City Center Plaza", address: "MG Road, Central Business District", dist: "0.2 km", available: 14, total: 150, lat: 12.9767, lng: 77.5946 },
+    { id: 2, name: "Secure-O-Park - South Block", address: "Brigade Road, South Zone", dist: "0.5 km", available: 3, total: 200, lat: 12.9710, lng: 77.6111 },
+    { id: 3, name: "Access Parking - Sky Hub", address: "Indiranagar 80ft Road", dist: "0.8 km", available: 45, total: 80, lat: 12.9719, lng: 77.6412 },
+    { id: 4, name: "AutoPark - North Station", address: "Main Railway Station, North Wing", dist: "1.2 km", available: 112, total: 500, lat: 12.9784, lng: 77.5684 }
   ];
 
   // DOM Elements
@@ -621,9 +621,9 @@ document.addEventListener('DOMContentLoaded', () => {
     map = L.map('map').setView([lat, lng], 14);
     
     // Add dark matter tiles to fit the aesthetic
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
+    L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      attribution: '&copy; Google Maps',
+      subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
       maxZoom: 20
     }).addTo(map);
 
@@ -680,8 +680,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       mockParkingData.forEach((lot, index) => {
-         lot.lat = currentLat + (Math.random() - 0.5) * 0.015;
-         lot.lng = currentLng + (Math.random() - 0.5) * 0.015;
+         // Use fixed coordinates if present, otherwise randomize
+         if (!lot.lat || !lot.lng) {
+             lot.lat = currentLat + (Math.random() - 0.5) * 0.015;
+             lot.lng = currentLng + (Math.random() - 0.5) * 0.015;
+         }
          
          const m = L.circleMarker([lot.lat, lot.lng], {
            color: '#20c997',
